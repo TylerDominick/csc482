@@ -1,32 +1,32 @@
 package main
 
 import(
-  "os"
   "io/ioutil"
   "log"
   "net/http"
   "loggly"
   "encoding/json"
-  "strconv"
+  
+
 )
 type Response struct {
-  GLOBAL_QUOTE GQuote 'json:"Global Quote"'
+  GlobalQuote   GlobalQuote   `json:"Global Quote"`
 }
 
-type GQuote struct{
-  Symbol string 'json:"01. symbol"'
-  Price float64 'json:"05. price"'
+type GlobalQuote struct{
+  Symbol  string   `json:"01. symbol"`
+  Price   string  `json:"05. price"`
 }
 
 func main(){
 
-  client := loggl.New("csc482")
+  client := loggly.New("csc482")
 
   api := "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=AAPL&apikey=RWP2ZLYN1BPL1RAU"
 
   resp, err := http.Get(api)
   if err != nil{
-    logglyResp := client.EchoSend("error", "Get request failed")
+    client.EchoSend("error", "Get request failed")
     log.Fatal(err)
   }
 
@@ -39,18 +39,17 @@ func main(){
   }
 
   var result Response
-  err := json.Unmarshall(body, &result)
+  err = json.Unmarshal(body, &result)
 
   if err != nil{
-    logglyResp := client.EchoSend("error", "Unmarshall failed")
+    client.EchoSend("error", "Unmarshall failed")
     log.Fatal(err)
   }
 
-  logglyMsg := "Symbol: " + Symbol + " Price: " + strconv.Itoa(Price)
+  symbol := result.GlobalQuote.Symbol
+  price := result.GlobalQuote.Price
 
-  _,err = os.Stdout.Write(body);
+  logglyMsg := "Symbol: " + symbol + " Price: " + price
+  client.EchoSend("info", logglyMsg)
 
-  if err != nil{
-    log.Fatal(err)
-  }
 }
