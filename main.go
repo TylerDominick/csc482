@@ -6,7 +6,7 @@ import(
   "net/http"
   "loggly"
   "encoding/json"
-  
+  "time"
 
 )
 type Response struct {
@@ -19,7 +19,13 @@ type GlobalQuote struct{
 }
 
 func main(){
+  for{
+    makeCall()
+    time.Sleep(2*time.Minute)
+  }
+}
 
+func makeCall(){
   client := loggly.New("csc482")
 
   api := "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=AAPL&apikey=RWP2ZLYN1BPL1RAU"
