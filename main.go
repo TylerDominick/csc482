@@ -4,9 +4,15 @@ import(
   "io/ioutil"
   "log"
   "net/http"
-  "loggly"
+  loggly "github.com/jamespearly/loggly"
   "encoding/json"
   "time"
+  "github.com/aws/aws-sdk-go/aws"
+  "github.com/aws/aws-sdk-go/aws/session"
+  "github.com/aws/aws-sdk-go/service/dynamodb"
+  "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+  "fmt"
+  "os"
 
 )
 type Response struct {
@@ -14,18 +20,54 @@ type Response struct {
 }
 
 type GlobalQuote struct{
+  Id string `json:"id"`
   Symbol  string   `json:"01. symbol"`
   Price   string  `json:"05. price"`
 }
 
 func main(){
   for{
-    makeCall()
+    writeToTable(makeCall())
     time.Sleep(2*time.Minute)
   }
 }
 
-func makeCall(){
+func writeToTable(gc GlobalQuote){
+  sess := session.Must(session.NewSessionWithOptions(session.Options{
+      SharedConfigState: session.SharedConfigEnable,
+      }))
+
+  // Create DynamoDB client
+  svc := dynamodb.New(sess)
+  //continue here
+  t := time.Now()
+  ts := t.String();
+  item := GlobalQuote{
+    Id: ts,
+    Symbol: gc.Symbol,
+    Price: gc.Price,
+  }
+
+  av, err := dynamodbattribute.MarshalMap(item)
+  if err != nil{
+    fmt.Println("failed to marshall")
+    fmt.Println(err.Error())
+    os.Exit(1)
+  }
+  input := &dynamodb.PutItemInput{
+    Item:  av,
+    TableName:  aws.String("AppleStock"),
+  }
+  _, err = svc.PutItem(input)
+  if err != nil{
+    fmt.Println("Got error calling PutItem: ")
+    fmt.Println(err.Error())
+    os.Exit(1)
+  }
+  fmt.Println("successfully added to table")
+}
+
+func makeCall() GlobalQuote{
   client := loggly.New("csc482")
 
   api := "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=AAPL&apikey=RWP2ZLYN1BPL1RAU"
@@ -57,5 +99,5 @@ func makeCall(){
 
   logglyMsg := "Symbol: " + symbol + " Price: " + price
   client.EchoSend("info", logglyMsg)
-
+  return result.GlobalQuote
 }
